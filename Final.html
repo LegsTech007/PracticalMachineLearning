@@ -81,6 +81,9 @@ img {
 </div>
 <div id="read-in-raw-data-and-set-classe-as.factor" class="section level1">
 <h1>Read in Raw Data and Set Classe as.factor</h1>
+<pre class="r"><code>library(caret)</code></pre>
+<pre><code>## Loading required package: lattice
+## Loading required package: ggplot2</code></pre>
 <pre class="r"><code>training &lt;- read.csv(file=&quot;/Users/jmatarese/downloads/pml-training.csv&quot;, header=TRUE, as.is = TRUE, stringsAsFactors = FALSE, sep=',', na.strings=c('NA','','#DIV/0!'))
 testing &lt;- read.csv(file=&quot;/Users/jmatarese/downloads/pml-testing.csv&quot;, header=TRUE, as.is = TRUE, stringsAsFactors = FALSE, sep=',', na.strings=c('NA','','#DIV/0!'))
 training$classe &lt;- as.factor(training$classe) </code></pre>
@@ -192,12 +195,91 @@ training$classe &lt;- as.factor(training$classe) </code></pre>
 </div>
 <div id="process-the-data" class="section level1">
 <h1>Process the Data</h1>
-<p>First I removed any varabile that had all NAs from the Training and Test sets.</p>
+<p>First I removed any varabile that had all NAs from the Training and Test sets. Next, I preprocessed the numeric data by centering it and scaling it by the standard deviation. Finally, I remove any near zero variables to simplfiy the model inputs from the training and test sets.</p>
 <pre class="r"><code>NA_omit &lt;- apply(training,2,function(x) {sum(is.na(x))}) 
 training &lt;- training[,which(NA_omit == 0)]
 NA_omit &lt;- apply(testing,2,function(x) {sum(is.na(x))}) 
 testing &lt;- testing[,which(NA_omit == 0)]
-num &lt;- which(lapply(training, class) %in% &quot;numeric&quot;)</code></pre>
+num &lt;- which(lapply(training, class) %in% &quot;numeric&quot;)
+preObj &lt;-preProcess(training[,num],method=c('center', 'scale'))
+train_L &lt;- predict(preObj, training[,num])
+train_L$classe &lt;- training$classe
+test_L &lt;-predict(preObj,testing[,num])
+zeros_omit &lt;- nearZeroVar(train_L,saveMetrics=TRUE)
+train_L &lt;- train_L[,zeros_omit$nzv==FALSE]
+zeros_omit &lt;- nearZeroVar(test_L,saveMetrics=TRUE)
+test_L &lt;- test_L[,zeros_omit$nzv==FALSE]</code></pre>
+</div>
+<div id="training-the-model" class="section level1">
+<h1>TRAINING THE MODEL</h1>
+<pre class="r"><code>inTrain = createDataPartition(train_L$classe, p = 3/4, list=FALSE)
+trainingx = train_L[inTrain,]
+crossValidation = train_L[-inTrain,]
+modFit &lt;- train(classe ~., method=&quot;rf&quot;, data=trainingx, trControl=trainControl(method='cv'), number=5, allowParallel=TRUE )</code></pre>
+<pre><code>## Loading required package: randomForest
+## randomForest 4.6-10
+## Type rfNews() to see new features/changes/bug fixes.</code></pre>
+<pre class="r"><code>summary(modFit)</code></pre>
+<pre><code>##                 Length Class      Mode     
+## call                6  -none-     call     
+## type                1  -none-     character
+## predicted       14718  factor     numeric  
+## err.rate         3000  -none-     numeric  
+## confusion          30  -none-     numeric  
+## votes           73590  matrix     numeric  
+## oob.times       14718  -none-     numeric  
+## classes             5  -none-     character
+## importance         27  -none-     numeric  
+## importanceSD        0  -none-     NULL     
+## localImportance     0  -none-     NULL     
+## proximity           0  -none-     NULL     
+## ntree               1  -none-     numeric  
+## mtry                1  -none-     numeric  
+## forest             14  -none-     list     
+## y               14718  factor     numeric  
+## test                0  -none-     NULL     
+## inbag               0  -none-     NULL     
+## xNames             27  -none-     character
+## problemType         1  -none-     character
+## tuneValue           1  data.frame list     
+## obsLevels           5  -none-     character</code></pre>
+<pre class="r"><code>trainingPred &lt;- predict(modFit, trainingx)
+confusionMatrix(trainingPred, trainingx$classe)</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 4185    0    0    0    0
+##          B    0 2848    0    0    0
+##          C    0    0 2567    0    0
+##          D    0    0    0 2412    0
+##          E    0    0    0    0 2706
+## 
+## Overall Statistics
+##                                      
+##                Accuracy : 1          
+##                  95% CI : (0.9997, 1)
+##     No Information Rate : 0.2843     
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16  
+##                                      
+##                   Kappa : 1          
+##  Mcnemar's Test P-Value : NA         
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            1.0000   1.0000   1.0000   1.0000   1.0000
+## Specificity            1.0000   1.0000   1.0000   1.0000   1.0000
+## Pos Pred Value         1.0000   1.0000   1.0000   1.0000   1.0000
+## Neg Pred Value         1.0000   1.0000   1.0000   1.0000   1.0000
+## Prevalence             0.2843   0.1935   0.1744   0.1639   0.1839
+## Detection Rate         0.2843   0.1935   0.1744   0.1639   0.1839
+## Detection Prevalence   0.2843   0.1935   0.1744   0.1639   0.1839
+## Balanced Accuracy      1.0000   1.0000   1.0000   1.0000   1.0000</code></pre>
+<pre class="r"><code>testingPred &lt;- predict(modFit, test_L)
+testingPred</code></pre>
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
 </div>
 
 

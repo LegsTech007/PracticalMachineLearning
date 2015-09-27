@@ -28,6 +28,7 @@ The data for this project come from this source: <http://groupware.les.inf.puc-r
 
 #Read in Raw Data and Set Classe as.factor
 ```{r}
+library(caret)
 training <- read.csv(file="/Users/jmatarese/downloads/pml-training.csv", header=TRUE, as.is = TRUE, stringsAsFactors = FALSE, sep=',', na.strings=c('NA','','#DIV/0!'))
 testing <- read.csv(file="/Users/jmatarese/downloads/pml-testing.csv", header=TRUE, as.is = TRUE, stringsAsFactors = FALSE, sep=',', na.strings=c('NA','','#DIV/0!'))
 training$classe <- as.factor(training$classe) 
@@ -39,12 +40,32 @@ str(training)
 ```
 
 #Process the Data
-First I removed any varabile that had all NAs from the Training and Test sets.
+First I removed any varabile that had all NAs from the Training and Test sets.  Next, I preprocessed the numeric data by centering it and scaling it by the standard deviation.  Finally, I remove any near zero variables to simplfiy the model inputs from the training and test sets.
 ```{r}
 NA_omit <- apply(training,2,function(x) {sum(is.na(x))}) 
 training <- training[,which(NA_omit == 0)]
 NA_omit <- apply(testing,2,function(x) {sum(is.na(x))}) 
 testing <- testing[,which(NA_omit == 0)]
 num <- which(lapply(training, class) %in% "numeric")
+preObj <-preProcess(training[,num],method=c('center', 'scale'))
+train_L <- predict(preObj, training[,num])
+train_L$classe <- training$classe
+test_L <-predict(preObj,testing[,num])
+zeros_omit <- nearZeroVar(train_L,saveMetrics=TRUE)
+train_L <- train_L[,zeros_omit$nzv==FALSE]
+zeros_omit <- nearZeroVar(test_L,saveMetrics=TRUE)
+test_L <- test_L[,zeros_omit$nzv==FALSE]
 ```
 
+#TRAINING THE MODEL
+```{r}
+inTrain = createDataPartition(train_L$classe, p = 3/4, list=FALSE)
+trainingx = train_L[inTrain,]
+crossValidation = train_L[-inTrain,]
+modFit <- train(classe ~., method="rf", data=trainingx, trControl=trainControl(method='cv'), number=5, allowParallel=TRUE )
+summary(modFit)
+trainingPred <- predict(modFit, trainingx)
+confusionMatrix(trainingPred, trainingx$classe)
+testingPred <- predict(modFit, test_L)
+testingPred
+```
