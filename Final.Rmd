@@ -1,0 +1,50 @@
+---
+title: "Practical Machine Learning"
+author: "James Matarese"
+date: "September 27, 2015"
+output: html_document
+---
+
+#Background Information
+The goal of this project is to predict the manner in which 20 unknown exercises were performed based on a machine learning algo taught by various data collections of 5 known methods of performing an exercise.
+
+Formal Description:
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+Data:
+Data 
+
+
+The training data for this project are available here: 
+
+<https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv>
+
+The test data are available here: 
+
+<https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv>
+
+The data for this project come from this source: <http://groupware.les.inf.puc-rio.br/har>. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment. 
+
+
+#Read in Raw Data and Set Classe as.factor
+```{r}
+training <- read.csv(file="/Users/jmatarese/downloads/pml-training.csv", header=TRUE, as.is = TRUE, stringsAsFactors = FALSE, sep=',', na.strings=c('NA','','#DIV/0!'))
+testing <- read.csv(file="/Users/jmatarese/downloads/pml-testing.csv", header=TRUE, as.is = TRUE, stringsAsFactors = FALSE, sep=',', na.strings=c('NA','','#DIV/0!'))
+training$classe <- as.factor(training$classe) 
+```
+
+#Look at Training Data
+```{r}
+str(training)
+```
+
+#Process the Data
+First I removed any varabile that had all NAs from the Training and Test sets.
+```{r}
+NA_omit <- apply(training,2,function(x) {sum(is.na(x))}) 
+training <- training[,which(NA_omit == 0)]
+NA_omit <- apply(testing,2,function(x) {sum(is.na(x))}) 
+testing <- testing[,which(NA_omit == 0)]
+num <- which(lapply(training, class) %in% "numeric")
+```
+
